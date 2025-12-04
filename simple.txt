@@ -1,0 +1,486 @@
+import logging
+import sqlite3
+import csv
+import io
+from datetime import datetime, date, timedelta
+from typing import Optional
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
+
+# --- CONFIGURATION ---
+# Replace with your actual values
+BOT_TOKEN = "8420582565:AAHM4qR-nN6iheHTO20TnEYFfJqngb5mVco"
+ADMIN_GROUP_ID = -1003238857423  # Your Admin Group ID
+
+# --- KHMER LANGUAGE & UI CONSTANTS (Platinum Style) ---
+LANG = {
+    # Headers
+    "header_welcome": "🏢 <b>ប្រព័ន្ធជំនួយអតិថិជន និងទំនាក់ទំនង</b>",
+    "header_ticket": "🎟 <b>ប័ណ្ណទទួលសំណើ (TICKET RECEIPT)</b>",
+    "header_reply": "👨‍💼 <b>ការឆ្លើយតបពីផ្នែកជំនួយ (SUPPORT TEAM):</b>\n",
+    "header_broadcast": "📢 <b>សេចក្តីជូនដំណឹងពីក្រុមហ៊ុន (ANNOUNCEMENT)</b>",
+    "header_report": "📊 <b>របាយការណ៍សង្ខេប (DAILY REPORT)</b>",
+    
+    # Body Text
+    "welcome_body": (
+        "សូមស្វាគមន៍ <b>{name}</b> មកកាន់ប្រព័ន្ធស្វ័យប្រវត្តិរបស់យើងខ្ញុំ។\n\n"
+        "យើងខ្ញុំត្រៀមខ្លួនជាស្រេចដើម្បីជួយលោកអ្នក។ សូមជ្រើសរើសសេវាកម្មខាងក្រោម៖"
+    ),
+    "contact_intro": (
+        "💬 <b>ការសន្ទនាជាមួយភ្នាក់ងារ</b>\n\n"
+        "សូមលោកអ្នកសរសេរសារ បញ្ហា ឬសំណួរ ហើយផ្ញើមកកាន់យើងខ្ញុំឥឡូវនេះ។\n"
+        "<i>(អាចផ្ញើជាអក្សរ រូបភាព ឬឯកសារបាន)</i>"
+    ),
+    "info_text": (
+        "🏢 <b>អំពីក្រុមហ៊ុន និងម៉ោងធ្វើការ (Company Info)</b>\n\n"
+        "យើងប្តេជ្ញាផ្តល់ជូននូវបរិយាកាសការងារប្រកបដោយវិជ្ជាជីវៈ និងប្រសិទ្ធភាពខ្ពស់។\n\n"
+        "⏰ <b>កាលវិភាគការងារ (Working Schedule):</b>\n"
+        "🟢 <b>ម៉ោងចូលធ្វើការ:</b> 07:30 ព្រឹក\n"
+        "☕ <b>សម្រាកពេលព្រឹក:</b> 09:30 - 09:45 ព្រឹក\n"
+        "☕ <b>សម្រាកពេលរសៀល:</b> 02:30 - 02:45 រសៀល\n"
+        "🔴 <b>ម៉ោងចេញធ្វើការ:</b> 05:30 ល្ងាច\n\n"
+        "📍 <b>ទីតាំង:</b> រាជធានីភ្នំពេញ, កម្ពុជា"
+    ),
+    "discipline_text": (
+        "📜 <b>វិន័យ និងគោលការណ៍ការងារក្នុង DI</b>\n\n"
+        "ដើម្បីរក្សាបាននូវស្តង់ដារការងារខ្ពស់ និងវប្បធម៌ល្អប្រសើរ យើងសូមណែនាំនូវចំណុចសំខាន់ៗ៖\n\n"
+        "1️⃣ <b>ឥរិយាបថ និងសីលធម៌ (Attitude):</b>\n"
+        "• ត្រូវមានភាពស្មោះត្រង់ និងការគោរពគ្នាទៅវិញទៅមក។\n"
+        "• រក្សាទំនាក់ទំនងល្អជាមួយសហការី និងអតិថិជន។\n"
+        "• មានស្មារតីសហការជាក្រុម (Teamwork) និងជួយគ្នាទៅវិញទៅមក។\n\n"
+        "2️⃣ <b>ការបំពេញការងារ (Work Ethics):</b>\n"
+        "• ត្រូវមកធ្វើការឱ្យទាន់ពេលវេលាដែលបានកំណត់ (៧:៣០ ព្រឹក)។\n"
+        "• ទទួលខុសត្រូវខ្ពស់លើភារកិច្ចដែលបានប្រគល់ជូន។\n"
+        "• ព្យាយាមអភិវឌ្ឍសមត្ថភាពខ្លួនឯងជាប្រចាំ។\n\n"
+        "3️⃣ <b>វិន័យទូទៅ (General Discipline):</b>\n"
+        "• គោរពតាមបទបញ្ជាផ្ទៃក្នុងរបស់ក្រុមហ៊ុនយ៉ាងម៉ឺងម៉ាត់។\n"
+        "• ចូលរួមថែរក្សាសណ្តាប់ធ្នាប់ និងអនាម័យកន្លែងធ្វើការ។\n"
+        "• ប្រើប្រាស់ពេលសម្រាក (Break Time) ឱ្យបានត្រឹមត្រូវ។\n\n"
+        "✨ <i>ភាពជោគជ័យរបស់អ្នក គឺជាជោគជ័យរបស់យើងទាំងអស់គ្នា!</i>"
+    ),
+    "ticket_created": (
+        "✅ <b>បានទទួលជោគជ័យ!</b>\n"
+        "--------------------------\n"
+        "🔢 កូដ-User: <code>{ticket_id}</code>\n"
+        "🕒 ស្ថានភាព: <b>កំពុងត្រួតពិនិត្យ (Pending)</b>\n\n"
+        "ក្រុមការងារនឹងឆ្លើយតបជូនលោកអ្នកក្នុងពេលបន្តិចទៀតនេះ។"
+    ),
+    "session_cleared": "✅ <b>ការសន្ទនាត្រូវបានបញ្ចប់។</b>\nលោកអ្នកអាចចាប់ផ្តើមថ្មីដោយចុច /start",
+    "error_generic": "⚠️ សូមអភ័យទោស ប្រព័ន្ធមានបញ្ហាបច្ចេកទេស។",
+    "admin_broadcast_success": "✅ បានផ្ញើសារជូនដំណឹងទៅកាន់អ្នកប្រើប្រាស់ចំនួន {count} នាក់។",
+}
+
+# --- LOGGING ---
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+# --- DATABASE ENGINE ---
+def init_db():
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    
+    # Core Tables
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS message_map (
+            admin_message_id INTEGER PRIMARY KEY,
+            user_id INTEGER,
+            user_name TEXT,
+            ticket_id TEXT,
+            question_text TEXT,
+            created_at TIMESTAMP,
+            status TEXT DEFAULT 'PENDING',
+            answer_text TEXT,
+            admin_responder TEXT
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            first_name TEXT,
+            username TEXT,
+            joined_at TIMESTAMP
+        )
+    ''')
+    
+    # Attempt to upgrade existing tables if columns are missing
+    try:
+        c.execute("ALTER TABLE message_map ADD COLUMN question_text TEXT")
+    except sqlite3.OperationalError: pass
+    try:
+        c.execute("ALTER TABLE message_map ADD COLUMN created_at TIMESTAMP")
+    except sqlite3.OperationalError: pass
+    try:
+        c.execute("ALTER TABLE message_map ADD COLUMN status TEXT DEFAULT 'PENDING'")
+    except sqlite3.OperationalError: pass
+    try:
+        c.execute("ALTER TABLE message_map ADD COLUMN answer_text TEXT")
+    except sqlite3.OperationalError: pass
+    try:
+        c.execute("ALTER TABLE message_map ADD COLUMN admin_responder TEXT")
+    except sqlite3.OperationalError: pass
+
+    conn.commit()
+    conn.close()
+
+def register_user(user):
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO users (user_id, first_name, username, joined_at) VALUES (?, ?, ?, ?)",
+              (user.id, user.first_name, user.username, datetime.now()))
+    conn.commit()
+    conn.close()
+
+def get_all_users():
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("SELECT user_id FROM users")
+    users = [row[0] for row in c.fetchall()]
+    conn.close()
+    return users
+
+def save_message_map(admin_msg_id, user_id, user_name, ticket_id, question_text):
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO message_map (admin_message_id, user_id, user_name, ticket_id, question_text, created_at, status) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+              (admin_msg_id, user_id, user_name, ticket_id, question_text, datetime.now(), 'PENDING'))
+    conn.commit()
+    conn.close()
+
+def update_message_answered(admin_msg_id, answer_text, admin_name):
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("UPDATE message_map SET status='SOLVED', answer_text=?, admin_responder=? WHERE admin_message_id=?", 
+              (answer_text, admin_name, admin_msg_id))
+    conn.commit()
+    conn.close()
+
+def get_original_user(admin_msg_id) -> Optional[tuple]:
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("SELECT user_id, user_name, ticket_id FROM message_map WHERE admin_message_id=?", (admin_msg_id,))
+    result = c.fetchone()
+    conn.close()
+    return result
+
+def delete_user_history(user_id):
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    # Only delete from map, keep user registry
+    c.execute("DELETE FROM message_map WHERE user_id=?", (user_id,))
+    conn.commit()
+    conn.close()
+
+# --- REPORTING FUNCTIONS ---
+
+def get_report_data(limit=None):
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    query = "SELECT ticket_id, user_name, question_text, status, created_at, admin_responder FROM message_map ORDER BY created_at DESC"
+    if limit:
+        query += f" LIMIT {limit}"
+    c.execute(query)
+    data = c.fetchall()
+    conn.close()
+    return data
+
+def get_stats_summary():
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    
+    # Total tickets
+    c.execute("SELECT COUNT(*) FROM message_map")
+    total = c.fetchone()[0]
+    
+    # Pending
+    c.execute("SELECT COUNT(*) FROM message_map WHERE status='PENDING'")
+    pending = c.fetchone()[0]
+    
+    # Today's tickets
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    c.execute("SELECT COUNT(*) FROM message_map WHERE created_at >= ?", (today_start,))
+    today_count = c.fetchone()[0]
+    
+    conn.close()
+    return total, pending, today_count
+
+# --- COMMAND HANDLERS ---
+
+async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Admin Command: /report [all]
+    - /report: Shows summary stats and last 5 pending tickets.
+    - /report all: Generates a CSV file of ALL tickets.
+    """
+    if update.effective_chat.id != ADMIN_GROUP_ID:
+        return
+
+    args = context.args
+    
+    # --- CSV EXPORT (Full History) ---
+    if args and args[0].lower() in ['all', 'full', 'csv']:
+        await update.message.reply_text("⏳ Generating full history report...")
+        
+        data = get_report_data() # Fetch all
+        
+        # Create CSV in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Ticket ID', 'User Name', 'Question', 'Status', 'Date', 'Admin Responder'])
+        writer.writerows(data)
+        output.seek(0)
+        
+        # Convert to bytes for Telegram
+        bio = io.BytesIO(output.read().encode('utf-8'))
+        bio.name = f"Support_Report_{date.today()}.csv"
+        
+        await context.bot.send_document(
+            chat_id=ADMIN_GROUP_ID,
+            document=bio,
+            caption=f"{LANG['header_report']}\n\nHere is the full conversation history.",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # --- DASHBOARD SUMMARY (Default) ---
+    total, pending, today = get_stats_summary()
+    
+    # Get last 5 pending tickets
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("SELECT ticket_id, user_name, question_text, created_at FROM message_map WHERE status='PENDING' ORDER BY created_at DESC LIMIT 5")
+    recent_pending = c.fetchall()
+    conn.close()
+    
+    summary_msg = (
+        f"{LANG['header_report']}\n\n"
+        f"📅 <b>Date:</b> {date.today()}\n"
+        f"📬 <b>Total Tickets (All Time):</b> {total}\n"
+        f"🆕 <b>Tickets Today:</b> {today}\n"
+        f"⏳ <b>Pending (Unanswered):</b> {pending}\n\n"
+        f"📋 <b>Recent Unanswered Questions:</b>\n"
+    )
+    
+    if not recent_pending:
+        summary_msg += "<i>No pending tickets! Great job team. 🎉</i>"
+    else:
+        for t in recent_pending:
+            # Truncate long questions
+            q_preview = (t[2][:40] + '..') if t[2] and len(t[2]) > 40 else (t[2] or "Photo/File")
+            summary_msg += f"• <code>{t[0]}</code> | {t[1]}: {q_preview}\n"
+            
+    summary_msg += "\n💡 <i>Type <code>/report all</code> to download full history.</i>"
+
+    await update.message.reply_html(summary_msg)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Professional Welcome Menu."""
+    user = update.effective_user
+    register_user(user)
+
+    keyboard = [
+        [
+            InlineKeyboardButton("💬 ជំនួយបច្ចេកទេស (Support)", callback_data="btn_support"),
+            InlineKeyboardButton("🏢 ម៉ោងធ្វើការ (Info)", callback_data="btn_info")
+        ],
+        [
+            InlineKeyboardButton("📜 វិន័យក្នុង DI (Discipline)", callback_data="btn_discipline")
+        ],
+        [
+            InlineKeyboardButton("🧹 បញ្ចប់ការសន្ទនា (End Chat)", callback_data="btn_clear")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_html(
+        f"{LANG['header_welcome']}\n\n" + 
+        LANG['welcome_body'].format(name=user.first_name),
+        reply_markup=reply_markup
+    )
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer() 
+
+    if query.data == "btn_support":
+        await query.message.reply_html(LANG["contact_intro"])
+    elif query.data == "btn_info":
+        await query.message.reply_html(LANG["info_text"])
+    elif query.data == "btn_discipline":
+        await query.message.reply_html(LANG["discipline_text"])
+    elif query.data == "btn_clear":
+        delete_user_history(query.from_user.id)
+        await query.message.reply_html(LANG["session_cleared"])
+
+async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id == ADMIN_GROUP_ID:
+        return
+
+    if update.message.text and update.message.text.upper() == "CLEAR":
+        delete_user_history(update.effective_user.id)
+        await update.message.reply_html(LANG["session_cleared"])
+        return
+
+    user = update.effective_user
+    register_user(user)
+    
+    ticket_id = f"DI-{update.message.message_id}"
+    question_content = update.message.text or "[Media/File]"
+    
+    admin_text = (
+        f"📩 <b>User_ID:</b> {ticket_id}\n"
+        f"👤 <b>Username:</b> {user.full_name} (@{user.username or 'NoUser'})\n"
+        f"🆔 <b>ID_telegram:</b> <code>{user.id}</code>\n"
+    )
+
+    sent_msg = None
+    try:
+        if update.message.text:
+            admin_text += f"💬 <b>Question:</b>\n{update.message.text}"
+            sent_msg = await context.bot.send_message(
+                chat_id=ADMIN_GROUP_ID, 
+                text=admin_text + "\n\n👉 <i>Reply to answer</i>", 
+                parse_mode=ParseMode.HTML
+            )
+        elif update.message.photo:
+            photo = update.message.photo[-1].file_id
+            caption = update.message.caption or "No Caption"
+            admin_text += f"🖼 <b>Photo Sent</b>\n📝 {caption}"
+            sent_msg = await context.bot.send_photo(
+                chat_id=ADMIN_GROUP_ID,
+                photo=photo,
+                caption=admin_text + "\n\n👉 <i>Reply to answer</i>",
+                parse_mode=ParseMode.HTML
+            )
+        elif update.message.document:
+            doc = update.message.document.file_id
+            caption = update.message.caption or "No Caption"
+            admin_text += f"📂 <b>File Sent</b>\n📝 {caption}"
+            sent_msg = await context.bot.send_document(
+                chat_id=ADMIN_GROUP_ID,
+                document=doc,
+                caption=admin_text + "\n\n👉 <i>Reply to answer</i>",
+                parse_mode=ParseMode.HTML
+            )
+
+        if sent_msg:
+            # SAVE FULL CONTEXT
+            save_message_map(sent_msg.message_id, user.id, user.full_name, ticket_id, question_content)
+            await update.message.reply_html(LANG["ticket_created"].format(ticket_id=ticket_id))
+
+    except Exception as e:
+        logger.error(f"Relay Error: {e}")
+        await update.message.reply_text(LANG["error_generic"])
+
+async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id != ADMIN_GROUP_ID or not update.message.reply_to_message:
+        return 
+
+    replied_msg_id = update.message.reply_to_message.message_id
+    mapping = get_original_user(replied_msg_id)
+    
+    if mapping:
+        user_id, user_name, ticket_id = mapping
+        admin_name = update.effective_user.first_name
+        answer_content = update.message.text or "[Media/File]"
+        
+        try:
+            header = f"{LANG['header_reply']}"
+            
+            if update.message.text:
+                await context.bot.send_message(
+                    chat_id=user_id, 
+                    text=f"{header}{update.message.text}", 
+                    parse_mode=ParseMode.HTML
+                )
+            elif update.message.photo:
+                photo = update.message.photo[-1].file_id
+                caption = update.message.caption or ""
+                await context.bot.send_photo(
+                    chat_id=user_id, 
+                    photo=photo, 
+                    caption=f"{header}{caption}", 
+                    parse_mode=ParseMode.HTML
+                )
+            elif update.message.voice:
+                voice = update.message.voice.file_id
+                await context.bot.send_voice(
+                    chat_id=user_id,
+                    voice=voice,
+                    caption=header,
+                    parse_mode=ParseMode.HTML
+                )
+
+            # UPDATE DB AS SOLVED
+            update_message_answered(replied_msg_id, answer_content, admin_name)
+            
+            await update.message.reply_text(f"✅ Reply sent to {user_name} (Marked SOLVED).")
+            
+        except Exception as e:
+            await update.message.reply_text(f"❌ Failed (User blocked bot?): {e}")
+    else:
+        await update.message.reply_text("⚠️ Ticket context lost (Old message).")
+
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id != ADMIN_GROUP_ID:
+        return
+
+    message = " ".join(context.args)
+    if not message:
+        await update.message.reply_text("⚠️ Usage: /broadcast [Your Message Here]")
+        return
+
+    users = get_all_users()
+    count = 0
+    formatted_msg = f"{LANG['header_broadcast']}\n\n{message}"
+    status_msg = await update.message.reply_text(f"⏳ Broadcasting to {len(users)} users...")
+
+    for uid in users:
+        try:
+            await context.bot.send_message(chat_id=uid, text=formatted_msg, parse_mode=ParseMode.HTML)
+            count += 1
+        except Exception: pass
+    
+    await status_msg.edit_text(LANG["admin_broadcast_success"].format(count=count))
+
+def main() -> None:
+    init_db()
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    # Admin Commands
+    application.add_handler(CommandHandler("broadcast", broadcast_command))
+    application.add_handler(CommandHandler("report", report_command)) # New Report Cmd
+
+    # User Commands
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("clear", start))
+    application.add_handler(CallbackQueryHandler(button_handler))
+
+    # Messages
+    application.add_handler(MessageHandler(
+        filters.ChatType.PRIVATE & ~filters.COMMAND & 
+        (filters.TEXT | filters.PHOTO | filters.Document.ALL | filters.VOICE),
+        handle_user_message
+    ))
+
+    # Admin Replies
+    application.add_handler(MessageHandler(
+        filters.Chat(chat_id=ADMIN_GROUP_ID) & filters.REPLY, 
+        handle_admin_reply
+    ))
+
+    print("Enterprise Platinum Bot 2.0 (With Reports) is running...")
+    application.run_polling()
+
+if __name__ == "__main__":
+    main()
