@@ -8,7 +8,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, time, date
 from typing import Optional
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReactionTypeEmoji
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReactionTypeEmoji, BotCommand
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -24,12 +24,11 @@ from telegram.ext import (
 # --------------------------------------------------------------------------------
 # REPLACE WITH YOUR NEW TOKEN IF YOU REVOKED THE OLD ONE
 BOT_TOKEN = "8420582565:AAFnas6tEcRlgyc-rybb6qcF9BEjeF-3T0k"
-ADMIN_GROUP_ID = -1003325498790 
+ADMIN_GROUP_ID = -1003325498790
 
 # --------------------------------------------------------------------------------
 # 🌐 FAKE WEB SERVER (FOR RENDER HOSTING)
 # --------------------------------------------------------------------------------
-# This class tricks Render into thinking the bot is a website so it doesn't kill it.
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -37,7 +36,6 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"Bot is alive and running!")
 
 def start_web_server():
-    # Render assigns a port automatically via the PORT environment variable
     port = int(os.environ.get('PORT', 8080))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     print(f"🌍 Fake Web Server started on port {port}")
@@ -47,7 +45,6 @@ def start_web_server():
 # 🇰🇭 PROFESSIONAL LANGUAGE PACK (KHMER ENTERPRISE)
 # --------------------------------------------------------------------------------
 LANG = {
-    # --- HEADERS ---
     "brand_header": "🏢 <b>ប្រព័ន្ធជំនួយនិស្សិតហាត់ការគ្រប់ជំនាន់</b>",
     "reply_header": "👨‍💼 <b>ដំណោះស្រាយពីក្រុមការងារ IT_Support</b>",
     "reply_footer": "\n\n🙏 អរគុណ <b>{name}</b> ដែលបានប្រើប្រាស់ Chat_Bot របស់យើង! បើមានសំណើរឬបញ្ហាផ្សេងទៀត សូមទាក់ទងមកក្រុមការងារយើងវិញ។",
@@ -55,20 +52,16 @@ LANG = {
     "report_header": "📊 <b>របាយការណ៍សង្ខេប</b>",
     "userlist_header": "👥 <b>បញ្ជីអ្នកប្រើប្រាស់</b>",
     "history_header": "📜 <b>ប្រវត្តិការសន្ទនា</b>",
-    
-    # --- ADMIN MENU (KHMER) ---
     "admin_help_text": (
         "🛠 <b>មជ្ឈមណ្ឌលបញ្ជា</b>\n"
         "───────────────\n"
-        "• <code>/iduser</code> : មើលបញ្ជីអ្នកប្រើប្រាស់ទាំងអស់ (List Users)\n"
-        "• <code>/DI-xxx</code> : មើលប្រវត្តិសន្ទនារបស់អតិថិជន (View History)\n"
-        "• <code>/report</code> : មើលរបាយការណ៍សង្ខេបប្រចាំថ្ងៃ (Daily Stats)\n"
-        "• <code>/report all</code> : ទាញយកឯកសារ Excel ពេញលេញ (Download CSV)\n"
+        "• <code>/iduser</code> : មើលបញ្ជីអ្នកប្រើប្រាស់ទាំងអស់\n"
+        "• <code>/DI-xxx</code> : មើលប្រវត្តិសន្ទនារបស់អតិថិជន\n"
+        "• <code>/report</code> : មើលរបាយការណ៍ប្រចាំថ្ងៃ\n"
+        "• <code>/reportall</code> : ទាញយកឯកសារ Excel\n"
         "• <code>/broadcast [msg]</code> : ផ្ញើសារជូនដំណឹងទៅកាន់អ្នកទាំងអស់គ្នា\n"
         "• <code>/help</code> : បង្ហាញបញ្ជីនេះម្តងទៀត"
     ),
-
-    # --- MENUS ---
     "menu_main_text": (
         "សួស្តី, <b>{name}</b>! 👋\n"
         "សូមស្វាគមន៍មកកាន់ប្រព័ន្ធដោះស្រាយបញ្ហា។\n\n"
@@ -77,8 +70,6 @@ LANG = {
         "សូមចុចប៊ូតុងខាងក្រោម👇"
     ),
     "menu_btn_support": "💬 សុំជំនួយពីក្រុមការងារ IT_Support",
-    
-    # --- MESSAGES ---
     "contact_intro": (
         "💬 <b>ដោះស្រាយបញ្ហាផ្សេងៗតាម Chat_Bot</b>\n"
         "───────────────\n"
@@ -99,7 +90,7 @@ def init_db():
     conn = sqlite3.connect("relay_bot.db")
     c = conn.cursor()
     
-    # 1. Message Table
+    # 1. Message Table (User Questions)
     c.execute('''
         CREATE TABLE IF NOT EXISTS message_map (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,6 +114,17 @@ def init_db():
             username TEXT,
             display_id TEXT, 
             joined_at TIMESTAMP
+        )
+    ''')
+
+    # 3. Reply Tracking (NEW: Maps Admin Group Message -> User Chat Message for Editing)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS reply_tracking (
+            admin_msg_id INTEGER PRIMARY KEY,
+            user_chat_id INTEGER,
+            sent_msg_id INTEGER,
+            admin_name TEXT,
+            user_name TEXT
         )
     ''')
     
@@ -208,6 +210,21 @@ def get_user_history(display_id):
     c.execute("SELECT created_at, question_text, answer_text, admin_responder, status FROM message_map WHERE display_id=? ORDER BY created_at ASC", (display_id,))
     return c.fetchall()
 
+def save_reply_tracking(admin_msg_id, user_chat_id, sent_msg_id, admin_name, user_name):
+    """Saves the link between Admin Group Message and User Private Message for editing."""
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO reply_tracking (admin_msg_id, user_chat_id, sent_msg_id, admin_name, user_name) VALUES (?, ?, ?, ?, ?)",
+              (admin_msg_id, user_chat_id, sent_msg_id, admin_name, user_name))
+    conn.commit()
+    conn.close()
+
+def get_reply_tracking(admin_msg_id):
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("SELECT user_chat_id, sent_msg_id, admin_name, user_name FROM reply_tracking WHERE admin_msg_id=?", (admin_msg_id,))
+    return c.fetchone()
+
 # --------------------------------------------------------------------------------
 # 🛡️ ERROR HANDLER
 # --------------------------------------------------------------------------------
@@ -277,11 +294,9 @@ async def history_lookup_handler(update: Update, context: ContextTypes.DEFAULT_T
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
     
-    # --- Check if user typed "/report all" ---
     if context.args and context.args[0].lower() in ['all', 'full', 'csv']:
         await report_all_command(update, context)
         return
-    # -----------------------------------------------
 
     conn = sqlite3.connect("relay_bot.db")
     c = conn.cursor()
@@ -321,7 +336,6 @@ async def report_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     clean_data = []
     for row in data:
-        # Sanitization: Ensure all fields are strings and not None
         clean_data.append([str(x) if x is not None else "" for x in row])
 
     output = io.StringIO()
@@ -329,7 +343,6 @@ async def report_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     writer.writerow(['User ID', 'Name', 'Question', 'Status', 'Date', 'Admin Response', 'Admin Name'])
     writer.writerows(clean_data)
     
-    # BOM for Excel utf-8 compatibility
     bio = io.BytesIO(b'\xef\xbb\xbf' + output.getvalue().encode('utf-8'))
     bio.name = f"Full_Report_{date.today()}.csv"
     
@@ -358,11 +371,18 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 # --------------------------------------------------------------------------------
 # 👤 USER INTERFACE & MENUS
 # --------------------------------------------------------------------------------
+async def post_init(application: Application) -> None:
+    """Sets the persistent menu button for users."""
+    await application.bot.set_my_commands([
+        BotCommand("start", "Start Menu / ប៉ឺម៉ឺនុយដើម"),
+        BotCommand("help", "Help / ជំនួយ"),
+        BotCommand("clear", "End Chat / បញ្ចប់")
+    ])
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     display_id = get_or_create_user(user)
 
-    # REMOVED EXTRA BUTTONS
     keyboard = [
         [InlineKeyboardButton(LANG["menu_btn_support"], callback_data="btn_support")]
     ]
@@ -397,7 +417,6 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     display_id = get_or_create_user(user)
     question_content = update.message.text or "[Media/File]"
     
-    # MODIFIED: Clean modern header format
     admin_text = (
         f"👤 <b>ឈ្មោះ:</b> {user.full_name}\n"
         f"───────────────\n"
@@ -406,10 +425,8 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     sent_msg = None
     try:
         if update.message.text:
-            admin_text += f"💬 <b>សំណួរ:</b>​{update.message.text} "
+            admin_text += f"💬 <b>សំណួរ :</b>{update.message.text}"
             sent_msg = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=admin_text, parse_mode=ParseMode.HTML)
-        
-        # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR USER ---
         elif update.message.photo:
             admin_text += f"🖼 <b>រូបភាព</b>\n{update.message.caption or ''}"
             sent_msg = await context.bot.send_photo(chat_id=ADMIN_GROUP_ID, photo=update.message.photo[-1].file_id, caption=admin_text, parse_mode=ParseMode.HTML)
@@ -425,16 +442,10 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         if sent_msg:
             save_message(sent_msg.message_id, user.id, user.full_name, display_id, question_content)
-            
-            # REACTION: React ❤️ to user's message to confirm receipt
             try:
                 await update.message.set_reaction(reaction=[ReactionTypeEmoji("❤")])
             except Exception:
                 pass 
-            
-            # Send standard receipt
-            receipt_msg = LANG["ticket_queued"].format(display_id=display_id)
-            await update.message.reply_html(receipt_msg)
             
     except Exception as e:
         logger.error(f"Relay Error: {e}")
@@ -453,52 +464,96 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
         admin_name = update.effective_user.full_name or "Support Agent"
         answer_content = update.message.text or "[Media/File]"
         
+        sent_user_msg = None
+        
         try:
-            # 1. Prepare Standard Header & Footer
             header = f"{LANG['reply_header']}\n───────────────\n"
             footer = LANG["reply_footer"].format(name=user_name)
-            
-            # 2. Prepare the "Answer Body" with Admin Name
             admin_label = f"<b>ឆ្លើយតប :</b> "
 
-            # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR ADMIN ---
             if update.message.text:
                 full_text = f"{header}{admin_label}{update.message.text}{footer}"
-                await context.bot.send_message(chat_id=user_id, text=full_text, parse_mode=ParseMode.HTML)
+                sent_user_msg = await context.bot.send_message(chat_id=user_id, text=full_text, parse_mode=ParseMode.HTML)
             
             elif update.message.photo:
                 caption_text = update.message.caption or ""
                 full_caption = f"{header}{admin_label}{caption_text}{footer}"
-                await context.bot.send_photo(chat_id=user_id, photo=update.message.photo[-1].file_id, caption=full_caption, parse_mode=ParseMode.HTML)
+                sent_user_msg = await context.bot.send_photo(chat_id=user_id, photo=update.message.photo[-1].file_id, caption=full_caption, parse_mode=ParseMode.HTML)
             
             elif update.message.document:
                 caption_text = update.message.caption or ""
                 full_caption = f"{header}{admin_label}{caption_text}{footer}"
-                await context.bot.send_document(chat_id=user_id, document=update.message.document.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
+                sent_user_msg = await context.bot.send_document(chat_id=user_id, document=update.message.document.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
 
             elif update.message.video:
                 caption_text = update.message.caption or ""
                 full_caption = f"{header}{admin_label}{caption_text}{footer}"
-                await context.bot.send_video(chat_id=user_id, video=update.message.video.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
+                sent_user_msg = await context.bot.send_video(chat_id=user_id, video=update.message.video.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
 
             elif update.message.voice:
                 full_caption = f"{header}{admin_label}(Voice Message){footer}"
-                await context.bot.send_voice(chat_id=user_id, voice=update.message.voice.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
+                sent_user_msg = await context.bot.send_voice(chat_id=user_id, voice=update.message.voice.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
 
-            # Update DB (Mark solved)
+            # Update DB and React
             update_message_answer(replied_msg_id, answer_content, admin_name)
+            try: await update.message.set_reaction(reaction=[ReactionTypeEmoji("❤")])
+            except: await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text="✅ Sent")
             
-            # REACTION: React ❤️ to ADMIN'S message to confirm sent
-            try:
-                await update.message.set_reaction(reaction=[ReactionTypeEmoji("❤")])
-            except Exception:
-                await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text="✅ Sent")
+            # --- NEW: Save Tracking info for Edits ---
+            if sent_user_msg:
+                save_reply_tracking(update.message.message_id, user_id, sent_user_msg.message_id, admin_name, user_name)
             
         except Exception as e:
             await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=f"❌ Failed to send: {e}")
     else:
         if not update.message.text.startswith("/"):
             await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text="⚠️ Ticket context lost (Old message).")
+
+# --------------------------------------------------------------------------------
+# ✏️ EDIT HANDLER (ADMIN EDITS MESSAGE -> UPDATES USER)
+# --------------------------------------------------------------------------------
+async def handle_admin_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles edits in the Admin Group and updates the message sent to the user."""
+    if update.effective_chat.id != ADMIN_GROUP_ID: return
+    
+    # Check if the update is an edited message
+    edited_msg = update.edited_message
+    if not edited_msg: return
+
+    # Look up if this message was sent to a user
+    tracking = get_reply_tracking(edited_msg.message_id)
+    # tracking: (user_chat_id, sent_msg_id, admin_name, user_name)
+    
+    if tracking:
+        user_chat_id, sent_msg_id, admin_name, user_name = tracking
+        
+        try:
+            # Reconstruct the message
+            header = f"{LANG['reply_header']}\n───────────────\n"
+            footer = LANG["reply_footer"].format(name=user_name)
+            admin_label = f"<b>ឆ្លើយតប :</b> "
+            
+            if edited_msg.text:
+                full_text = f"{header}{admin_label}{edited_msg.text}{footer}"
+                await context.bot.edit_message_text(
+                    chat_id=user_chat_id,
+                    message_id=sent_msg_id,
+                    text=full_text,
+                    parse_mode=ParseMode.HTML
+                )
+                
+            elif edited_msg.caption:
+                # If admin edits caption of media
+                full_caption = f"{header}{admin_label}{edited_msg.caption}{footer}"
+                await context.bot.edit_message_caption(
+                    chat_id=user_chat_id,
+                    message_id=sent_msg_id,
+                    caption=full_caption,
+                    parse_mode=ParseMode.HTML
+                )
+            
+        except Exception as e:
+            logger.error(f"Failed to sync edit: {e}")
 
 # --------------------------------------------------------------------------------
 # 🚀 MAIN APPLICATION
@@ -508,7 +563,7 @@ def main() -> None:
     threading.Thread(target=start_web_server, daemon=True).start()
 
     init_db()
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
 
     application.add_handler(CommandHandler("broadcast", broadcast_command))
     application.add_handler(CommandHandler("report", report_command))
@@ -522,17 +577,24 @@ def main() -> None:
     application.add_handler(CommandHandler("clear", start))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    # MODIFIED: Added filters.VIDEO to the filter list
+    # MESSAGE HANDLER (New messages)
     application.add_handler(MessageHandler(
         filters.ChatType.PRIVATE & ~filters.COMMAND & (filters.TEXT | filters.PHOTO | filters.Document.ALL | filters.VIDEO | filters.VOICE),
         handle_user_message
     ))
 
-    application.add_handler(MessageHandler(filters.Chat(chat_id=ADMIN_GROUP_ID) & filters.REPLY, handle_admin_reply))
+    # ADMIN REPLY HANDLER
+    application.add_handler(MessageHandler(filters.Chat(chat_id=ADMIN_GROUP_ID) & filters.REPLY & ~filters.UpdateType.EDITED_MESSAGE, handle_admin_reply))
+
+    # --- NEW: ADMIN EDIT HANDLER ---
+    application.add_handler(MessageHandler(
+        filters.Chat(chat_id=ADMIN_GROUP_ID) & filters.UpdateType.EDITED_MESSAGE,
+        handle_admin_edit
+    ))
 
     application.add_error_handler(error_handler)
 
-    print("🚀 Enterprise Infinity Bot v13 is ONLINE...")
+    print("🚀 Enterprise Infinity Bot v15 (Live Edit Sync) is ONLINE...")
     application.run_polling()
 
 if __name__ == "__main__":
