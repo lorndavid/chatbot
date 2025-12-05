@@ -167,7 +167,13 @@ def init_db():
         )
     ''')
     
-    # Migrations
+    # --- OPTIMIZATION FOR 1000+ USERS: INDEXES ---
+    # These lines make searching instantly fast even with huge data
+    c.execute("CREATE INDEX IF NOT EXISTS idx_users_display_id ON users(display_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_msg_display_id ON message_map(display_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_msg_status ON message_map(status)")
+    
+    # Migrations (Auto-fix columns if missing)
     try: c.execute("ALTER TABLE users ADD COLUMN display_id TEXT")
     except: pass
     try: c.execute("ALTER TABLE message_map ADD COLUMN display_id TEXT")
@@ -466,7 +472,6 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Prepare Reply
             header = f"{LANG['reply_header']}\n─────────────────────────────\n"
             # Add footer with user's name
-            "─────────────────────────────\n"
             footer = LANG["reply_footer"].format(name=user_name)
             
             if update.message.text:
