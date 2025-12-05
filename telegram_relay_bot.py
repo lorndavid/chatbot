@@ -5,7 +5,7 @@ import io
 import re
 from datetime import datetime, time, date
 from typing import Optional
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReactionTypeEmoji
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -20,12 +20,8 @@ from telegram.ext import (
 # ⚙️ SYSTEM CONFIGURATION (ENTERPRISE SETTINGS)
 # --------------------------------------------------------------------------------
 # REPLACE WITH YOUR NEW TOKEN IF YOU REVOKED THE OLD ONE
-BOT_TOKEN = "8420582565:AAHM4qR-nN6iheHTO20TnEYFfJqngb5mVco"
+BOT_TOKEN = "8420582565:AAFnas6tEcRlgyc-rybb6qcF9BEjeF-3T0k"
 ADMIN_GROUP_ID = -1003238857423 
-
-# ⏰ Business Hours (24h format)
-WORK_START = time(7, 30)  # 7:30 AM
-WORK_END = time(17, 30)   # 5:30 PM
 
 # --------------------------------------------------------------------------------
 # 🇰🇭 PROFESSIONAL LANGUAGE PACK (KHMER ENTERPRISE)
@@ -33,9 +29,8 @@ WORK_END = time(17, 30)   # 5:30 PM
 LANG = {
     # --- HEADERS ---
     "brand_header": "🏢 <b>ប្រព័ន្ធជំនួយនិស្សិតហាត់ការគ្រប់ជំនាន់</b>",
-    "ticket_header": "📨 <b>សារថ្មីពីនិស្សិតហាត់ការគ្រប់ជំនាន់ </b>",
-    "reply_header": "👨‍💼 <b>ចម្លើយតបពីភ្នាក់ងារ</b>",
-    "reply_footer": "\n\n🙏 អរគុណ {name} ដែលបានប្រើប្រាស់ Chat_Bot របស់យើង!",
+    "reply_header": "👨‍💼 <b>ចម្លើយពីក្រុមការងារ IT_Support</b>",
+    "reply_footer": "\n\n🙏 អរគុណ <b>{name}</b> ដែលបានប្រើប្រាស់ Chat_Bot របស់យើង! បើមានសំណួរឬបញ្ហាផ្សេងទៀតសូមកុំស្ទាក់ស្ទើរនៅក្នុងការទាក់ទងមកយើងវិញ។",
     "broadcast_header": "📢 <b>សេចក្តីជូនដំណឹងផ្លូវការ (OFFICIAL ANNOUNCEMENT)</b>",
     "report_header": "📊 <b>របាយការណ៍សង្ខេប (DAILY REPORT)</b>",
     "userlist_header": "👥 <b>បញ្ជីអ្នកប្រើប្រាស់ (USER DIRECTORY)</b>",
@@ -44,11 +39,11 @@ LANG = {
     # --- ADMIN MENU (KHMER) ---
     "admin_help_text": (
         "🛠 <b>មជ្ឈមណ្ឌលបញ្ជា (ADMIN COMMAND CENTER)</b>\n"
-        "─────────────────────────────\n"
+        "───────────────\n"
         "• <code>/iduser</code> : មើលបញ្ជីអ្នកប្រើប្រាស់ទាំងអស់ (List Users)\n"
         "• <code>/DI-xxx</code> : មើលប្រវត្តិសន្ទនារបស់អតិថិជន (View History)\n"
         "• <code>/report</code> : មើលរបាយការណ៍សង្ខេបប្រចាំថ្ងៃ (Daily Stats)\n"
-        "• <code>/report all</code> : ទាញយកឯកសារ Excel ពេញលេញ (Download CSV)\n"
+        "• <code>/reportall</code> : ទាញយកឯកសារ Excel ពេញលេញ (Download CSV)\n"
         "• <code>/broadcast [msg]</code> : ផ្ញើសារជូនដំណឹងទៅកាន់អ្នកទាំងអស់គ្នា\n"
         "• <code>/help</code> : បង្ហាញបញ្ជីនេះម្តងទៀត"
     ),
@@ -61,36 +56,29 @@ LANG = {
         "យើងខ្ញុំត្រៀមខ្លួនជាស្រេចដើម្បីជួយសម្រួលការងាររបស់លោកអ្នក។\n"
         "សូមជ្រើសរើសប្រតិបត្តិការខាងក្រោម៖"
     ),
-    "menu_btn_support": "💬 សន្ទនាជាមួយភ្នាក់ងារ",
+    "menu_btn_support": "💬 សន្ទនាជាមួយក្រុមការងារ IT_Support",
     "menu_btn_info": "🏢 ម៉ោងធ្វើការ",
-    "menu_btn_profile": "👤 គណនីរបស់ខ្ញុំ",
     "menu_btn_discipline": "📜 វិន័យក្នុង DI",
     
     # --- MESSAGES ---
     "contact_intro": (
-        "💬 <b>សេវាកម្មអតិថិជន </b>\n"
-        "─────────────────────────────\n"
+        "💬 <b>ស្រាយចម្ងាល់ផ្សេងៗ IT_Support</b>\n"
+        "───────────────\n"
         "📝 សូមសរសេររៀបរាប់ពីបញ្ហា ឬសំណួររបស់អ្នកនៅទីនេះ។\n"
-        "📎 <i>(ប្រព័ន្ធទទួល: អក្សរ, រូបភាព, ឯកសារ PDF/Word, និង សំឡេង)</i>"
+        "📎 <i>(ប្រព័ន្ធទទួល: អក្សរ, រូបភាព,​ វីឌីអូ, ឯកសារ PDF/Word, និង សំឡេង)</i>"
     ),
     "ticket_queued": (
-        "📥 <b>បានទទួលសារជោគជ័យ!</b>\n"
-        "─────────────────────────────\n"
-        "🆔 ID: <code>{display_id}</code>\n"
+        "✅ <b>សំណើត្រូវបានផ្ញើរ!</b>\n"
         "⏳ ស្ថានភាព: <b>កំពុងបញ្ជូនទៅកាន់ក្រុមការងារ...</b>\n"
-        "─────────────────────────────\n"
+        "───────────────\n"
         "<i>យើងខ្ញុំនឹងឆ្លើយតបជូនលោកអ្នកក្នុងពេលបន្តិចទៀតនេះ។</i>"
-    ),
-    "ticket_queued_offline": (
-        "\n\n🌙 <b>ក្រៅម៉ោងធ្វើការ</b>\n"
-        "បច្ចុប្បន្នយើងស្ថិតនៅក្រៅម៉ោងធ្វើការ។ សំណើរបស់អ្នកត្រូវបានរក្សាទុក ហើយយើងនឹងឆ្លើយតបទៅតាមលទ្ធភាព។"
     ),
     "session_cleared": "♻️ <b>ការសន្ទនាត្រូវបានបិទបញ្ចប់។</b>",
     
     # --- INFO SECTIONS ---
     "info_company": (
         "🏢 <b>ព័ត៌មានក្រុមហ៊ុន (COMPANY PROFILE)</b>\n"
-        "─────────────────────────────\n"
+        "───────────────\n"
         "យើងប្តេជ្ញាផ្តល់ជូននូវបរិយាកាសការងារប្រកបដោយវិជ្ជាជីវៈ និងប្រសិទ្ធភាពខ្ពស់។\n\n"
         "⏰ <b>កាលវិភាគការងារ:</b>\n"
         "🟢 <b>ម៉ោងចូល:</b> 07:30 ព្រឹក\n"
@@ -102,7 +90,7 @@ LANG = {
     ),
     "info_discipline": (
         "📜 <b>វិន័យ និងគោលការណ៍ការងារក្នុង DI</b>\n"
-        "─────────────────────────────\n"
+        "───────────────\n"
         "ដើម្បីរក្សាបាននូវស្តង់ដារការងារខ្ពស់ និងវប្បធម៌ល្អប្រសើរ យើងសូមណែនាំនូវចំណុចសំខាន់ៗ៖\n\n"
         "1️⃣ <b>ឥរិយាបថ និងសីលធម៌ (Attitude):</b>\n"
         "• ត្រូវមានភាពស្មោះត្រង់ (Honesty) និងការគោរពគ្នាទៅវិញទៅមក។\n"
@@ -115,16 +103,9 @@ LANG = {
         "3️⃣ <b>វិន័យទូទៅ (General Discipline):</b>\n"
         "• គោរពតាមបទបញ្ជាផ្ទៃក្នុងរបស់ក្រុមហ៊ុនយ៉ាងម៉ឺងម៉ាត់។\n"
         "• ចូលរួមថែរក្សាសណ្តាប់ធ្នាប់ និងអនាម័យកន្លែងធ្វើការ។\n"
-        "• ប្រើប្រាស់ពេលសម្រាក (Break Time) ឱ្យបានត្រឹមត្រូវ។\n\n"
+        "• ប្រើប្រាស់ពេលសម្រាក (Break Time) ឱ្យបានត្រឹមត្រូវ។\n"
+        "• ហាមលេងហ្គេម (Game) ឬប្រើប្រាស់ទូរស័ព្ទក្នុងគោលបំណងកម្សាន្តក្នុងម៉ោងធ្វើការ។\n\n"
         "✨ <i>ភាពជោគជ័យរបស់អ្នក គឺជាជោគជ័យរបស់យើងទាំងអស់គ្នា!</i>"
-    ),
-    "user_profile": (
-        "👤 <b>ព័ត៌មានគណនី (MY PROFILE)</b>\n"
-        "─────────────────────────────\n"
-        "• ឈ្មោះ: <b>{name}</b>\n"
-        "• លេខសម្គាល់អចិន្ត្រៃយ៍: <code>{display_id}</code>\n"
-        "• ឈ្មោះក្នុងប្រព័ន្ធ: @{username}\n"
-        "• ថ្ងៃចុះឈ្មោះ: {date}"
     ),
 }
 
@@ -167,7 +148,7 @@ def init_db():
         )
     ''')
     
-    # Indexes for 1000+ Users Performance
+    # Indexes
     c.execute("CREATE INDEX IF NOT EXISTS idx_users_display_id ON users(display_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_msg_display_id ON message_map(display_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_msg_status ON message_map(status)")
@@ -204,12 +185,6 @@ def get_or_create_user(user):
     conn.commit()
     conn.close()
     return display_id
-
-def get_user_profile_by_id(user_id):
-    conn = sqlite3.connect("relay_bot.db")
-    c = conn.cursor()
-    c.execute("SELECT first_name, username, joined_at, display_id FROM users WHERE user_id=?", (user_id,))
-    return c.fetchone()
 
 def get_user_id_by_display_id(display_id):
     conn = sqlite3.connect("relay_bot.db")
@@ -255,20 +230,14 @@ def get_user_history(display_id):
     c.execute("SELECT created_at, question_text, answer_text, admin_responder, status FROM message_map WHERE display_id=? ORDER BY created_at ASC", (display_id,))
     return c.fetchall()
 
-def is_business_hours():
-    now = datetime.now().time()
-    return WORK_START <= now <= WORK_END
-
 # --------------------------------------------------------------------------------
-# 🛡️ ERROR HANDLER (PREVENTS CRASHES)
+# 🛡️ ERROR HANDLER
 # --------------------------------------------------------------------------------
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Log the error and handle it gracefully instead of crashing."""
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
-    # Optional: Send a message to admin if needed, but keeping it silent for logs is safer for 24/7 uptime.
 
 # --------------------------------------------------------------------------------
-# 👑 ADMIN COMMANDS CENTER
+# 👑 ADMIN COMMANDS
 # --------------------------------------------------------------------------------
 async def admin_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
@@ -279,11 +248,10 @@ async def list_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     users = get_all_users_details()
     
     if not users:
-        # SAFE SEND: Uses context.bot.send_message instead of reply_text to avoid crashes
         await context.bot.send_message(chat_id=update.effective_chat.id, text="📭 No users yet.")
         return
 
-    msg = f"{LANG['brand_header']}\n{LANG['userlist_header']}\n─────────────────────────────\n"
+    msg = f"{LANG['brand_header']}\n{LANG['userlist_header']}\n───────────────\n"
     for uid, fname, uname, did in users[-30:]:
         u_display = f"@{uname}" if uname else "N/A"
         msg += f"🆔 <b>{did}</b> | 👤 {fname}\n🔗 {u_display} | ID: <code>{uid}</code>\n\n"
@@ -305,7 +273,7 @@ async def history_lookup_handler(update: Update, context: ContextTypes.DEFAULT_T
         msg = (
             f"{LANG['history_header']}\n"
             f"👤 <b>USER: {user_info[1]}</b> ({display_id})\n"
-            f"─────────────────────────────\n\n"
+            f"───────────────\n\n"
         )
         if not history:
             msg += "<i>No message history found.</i>"
@@ -330,25 +298,7 @@ async def history_lookup_handler(update: Update, context: ContextTypes.DEFAULT_T
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
-    args = context.args
     
-    if args and args[0].lower() in ['all', 'full', 'csv']:
-        conn = sqlite3.connect("relay_bot.db")
-        c = conn.cursor()
-        c.execute("SELECT display_id, user_name, question_text, status, created_at, answer_text, admin_responder FROM message_map ORDER BY created_at DESC")
-        data = c.fetchall()
-        conn.close()
-
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['User Ref ID', 'Name', 'Question', 'Status', 'Date', 'Admin Response', 'Admin Name'])
-        writer.writerows(data)
-        
-        bio = io.BytesIO(b'\xef\xbb\xbf' + output.getvalue().encode('utf-8'))
-        bio.name = f"Report_{date.today()}.csv"
-        await context.bot.send_document(chat_id=ADMIN_GROUP_ID, document=bio, caption="📊 <b>Full Export (With Responses)</b>", parse_mode=ParseMode.HTML)
-        return
-
     conn = sqlite3.connect("relay_bot.db")
     c = conn.cursor()
     c.execute("SELECT COUNT(*), SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) FROM message_map")
@@ -360,7 +310,7 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     msg = (
         f"{LANG['report_header']}\n"
-        f"─────────────────────────────\n"
+        f"───────────────\n"
         f"📅 <b>{date.today().strftime('%B %d, %Y')}</b>\n"
         f"📈 Total Messages: <b>{total}</b>\n"
         f"⚠️ Pending Action: <b>{pending}</b>\n\n"
@@ -374,6 +324,53 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         msg += "✨ <i>No pending tickets.</i>"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=msg, parse_mode=ParseMode.HTML)
 
+async def report_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id != ADMIN_GROUP_ID: return
+    
+    await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text="⏳ Generating full Excel report...")
+
+    conn = sqlite3.connect("relay_bot.db")
+    c = conn.cursor()
+    c.execute("SELECT display_id, user_name, question_text, status, created_at, answer_text, admin_responder FROM message_map ORDER BY created_at DESC")
+    data = c.fetchall()
+    conn.close()
+
+    clean_data = []
+    for row in data:
+        # Sanitization: Ensure all fields are strings and not None
+        clean_data.append([str(x) if x is not None else "" for x in row])
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['User ID', 'Name', 'Question', 'Status', 'Date', 'Admin Response', 'Admin Name'])
+    writer.writerows(clean_data)
+    
+    # BOM for Excel utf-8 compatibility
+    bio = io.BytesIO(b'\xef\xbb\xbf' + output.getvalue().encode('utf-8'))
+    bio.name = f"Full_Report_{date.today()}.csv"
+    
+    await context.bot.send_document(chat_id=ADMIN_GROUP_ID, document=bio, caption="📊 <b>Full Export (Excel/CSV)</b>", parse_mode=ParseMode.HTML)
+
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id != ADMIN_GROUP_ID: return
+    msg = " ".join(context.args)
+    if not msg: 
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage: /broadcast [Message]")
+        return
+    
+    users = get_all_users_details()
+    ids = [row[0] for row in users]
+    count = 0
+    formatted = f"{LANG['broadcast_header']}\n───────────────\n{msg}"
+    
+    status = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=f"⏳ Sending to {len(ids)} users...")
+    for uid in ids:
+        try:
+            await context.bot.send_message(chat_id=uid, text=formatted, parse_mode=ParseMode.HTML)
+            count += 1
+        except: pass
+    await context.bot.edit_message_text(chat_id=ADMIN_GROUP_ID, message_id=status.message_id, text=f"✅ Successfully sent to {count} users.")
+
 # --------------------------------------------------------------------------------
 # 👤 USER INTERFACE & MENUS
 # --------------------------------------------------------------------------------
@@ -381,10 +378,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     display_id = get_or_create_user(user)
 
+    # REMOVED PROFILE BUTTON
     keyboard = [
         [InlineKeyboardButton(LANG["menu_btn_support"], callback_data="btn_support")],
-        [InlineKeyboardButton(LANG["menu_btn_info"], callback_data="btn_info"), InlineKeyboardButton(LANG["menu_btn_discipline"], callback_data="btn_discipline")],
-        [InlineKeyboardButton(LANG["menu_btn_profile"], callback_data="btn_profile")]
+        [InlineKeyboardButton(LANG["menu_btn_info"], callback_data="btn_info"), InlineKeyboardButton(LANG["menu_btn_discipline"], callback_data="btn_discipline")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -407,12 +404,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.message.reply_html(LANG["info_company"])
     elif data == "btn_discipline":
         await query.message.reply_html(LANG["info_discipline"])
-    elif data == "btn_profile":
-        profile = get_user_profile_by_id(user.id)
-        joined_date = profile[2].split()[0] if profile else "N/A"
-        await query.message.reply_html(LANG["user_profile"].format(
-            name=user.full_name, display_id=display_id, uid=user.id, username=user.username or "None", date=joined_date
-        ))
 
 # --------------------------------------------------------------------------------
 # 📨 MESSAGE HANDLER (USER -> ADMIN)
@@ -428,37 +419,49 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     display_id = get_or_create_user(user)
     question_content = update.message.text or "[Media/File]"
     
+    # MODIFIED: Clean modern header format as requested
     admin_text = (
-        f"{LANG['ticket_header']} <code>{display_id}</code>\n"
-        f"─────────────────────────────\n"
-        f"👤 <b>User:</b> {user.full_name}\n"
-        f"🔗 <b>Link:</b> @{user.username or 'NoUser'}\n\n"
+        f"📨 <b>សារថ្មីពីនិស្សិតហាត់ការគ្រប់ជំនាន់  {display_id}</b>\n"
+        f"───────────────\n"
+        f"👤 <b>ឈ្មោះ:</b> {user.full_name}\n"
+        f"🔗 <b>គណនី:</b> @{user.username or 'NoUser'}\n\n"
     )
 
     sent_msg = None
     try:
         if update.message.text:
-            admin_text += f"💬 <b>Question:</b>\n{update.message.text}"
+            admin_text += f"💬 <b>សំណួរ:</b>\n{update.message.text}"
             sent_msg = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=admin_text, parse_mode=ParseMode.HTML)
+        
+        # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR USER ---
         elif update.message.photo:
-            admin_text += f"🖼 <b>Photo</b>\n{update.message.caption or ''}"
+            admin_text += f"🖼 <b>រូបភាព</b>\n{update.message.caption or ''}"
             sent_msg = await context.bot.send_photo(chat_id=ADMIN_GROUP_ID, photo=update.message.photo[-1].file_id, caption=admin_text, parse_mode=ParseMode.HTML)
         elif update.message.document:
-            admin_text += f"📂 <b>File</b>\n{update.message.caption or ''}"
+            admin_text += f"📂 <b>ឯកសារ</b>\n{update.message.caption or ''}"
             sent_msg = await context.bot.send_document(chat_id=ADMIN_GROUP_ID, document=update.message.document.file_id, caption=admin_text, parse_mode=ParseMode.HTML)
+        elif update.message.video:
+            admin_text += f"🎥 <b>វីដេអូ</b>\n{update.message.caption or ''}"
+            sent_msg = await context.bot.send_video(chat_id=ADMIN_GROUP_ID, video=update.message.video.file_id, caption=admin_text, parse_mode=ParseMode.HTML)
         elif update.message.voice:
-            admin_text += "🎤 <b>Voice</b>"
+            admin_text += "🎤 <b>សំឡេង</b>"
             sent_msg = await context.bot.send_voice(chat_id=ADMIN_GROUP_ID, voice=update.message.voice.file_id, caption=admin_text, parse_mode=ParseMode.HTML)
 
         if sent_msg:
             save_message(sent_msg.message_id, user.id, user.full_name, display_id, question_content)
+            
+            # REACTION: React ❤️ to user's message to confirm receipt
+            try:
+                await update.message.set_reaction(reaction=[ReactionTypeEmoji("❤")])
+            except Exception:
+                pass 
+            
+            # Send standard receipt (NO OFFLINE FOOTER)
             receipt_msg = LANG["ticket_queued"].format(display_id=display_id)
-            if not is_business_hours():
-                receipt_msg += LANG["ticket_queued_offline"]
             await update.message.reply_html(receipt_msg)
+            
     except Exception as e:
         logger.error(f"Relay Error: {e}")
-        # Silent fail or simple message to avoid loops
 
 # --------------------------------------------------------------------------------
 # 👨‍💼 REPLY HANDLER (ADMIN -> USER)
@@ -475,50 +478,51 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
         answer_content = update.message.text or "[Media/File]"
         
         try:
-            # Prepare Reply
-            header = f"{LANG['reply_header']}\n─────────────────────────────\n"
-            # Add footer with user's name
+            # 1. Prepare Standard Header & Footer
+            header = f"{LANG['reply_header']}\n───────────────\n"
             footer = LANG["reply_footer"].format(name=user_name)
             
+            # 2. Prepare the "Answer Body" with Admin Name
+            admin_label = f"<b>ឆ្លើយតប :</b> "
+
+            # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR ADMIN ---
             if update.message.text:
-                full_text = f"{header}{update.message.text}{footer}"
+                full_text = f"{header}{admin_label}{update.message.text}{footer}"
                 await context.bot.send_message(chat_id=user_id, text=full_text, parse_mode=ParseMode.HTML)
+            
             elif update.message.photo:
-                caption = f"{header}{update.message.caption or ''}{footer}"
-                await context.bot.send_photo(chat_id=user_id, photo=update.message.photo[-1].file_id, caption=caption, parse_mode=ParseMode.HTML)
+                caption_text = update.message.caption or ""
+                full_caption = f"{header}{admin_label}{caption_text}{footer}"
+                await context.bot.send_photo(chat_id=user_id, photo=update.message.photo[-1].file_id, caption=full_caption, parse_mode=ParseMode.HTML)
+            
+            elif update.message.document:
+                caption_text = update.message.caption or ""
+                full_caption = f"{header}{admin_label}{caption_text}{footer}"
+                await context.bot.send_document(chat_id=user_id, document=update.message.document.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
+
+            elif update.message.video:
+                caption_text = update.message.caption or ""
+                full_caption = f"{header}{admin_label}{caption_text}{footer}"
+                await context.bot.send_video(chat_id=user_id, video=update.message.video.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
+
             elif update.message.voice:
-                caption = f"{header} (Voice Message){footer}"
-                await context.bot.send_voice(chat_id=user_id, voice=update.message.voice.file_id, caption=caption, parse_mode=ParseMode.HTML)
+                full_caption = f"{header}{admin_label}(Voice Message){footer}"
+                await context.bot.send_voice(chat_id=user_id, voice=update.message.voice.file_id, caption=full_caption, parse_mode=ParseMode.HTML)
 
             # Update DB (Mark solved)
             update_message_answer(replied_msg_id, answer_content, admin_name)
-            await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=f"✅ <b>Sent to {user_name} ({display_id})</b>", parse_mode=ParseMode.HTML)
+            
+            # REACTION: React ❤️ to ADMIN'S message to confirm sent
+            try:
+                await update.message.set_reaction(reaction=[ReactionTypeEmoji("❤")])
+            except Exception:
+                await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text="✅ Sent")
             
         except Exception as e:
             await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=f"❌ Failed to send: {e}")
     else:
         if not update.message.text.startswith("/"):
             await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text="⚠️ Ticket context lost (Old message).")
-
-async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.effective_chat.id != ADMIN_GROUP_ID: return
-    msg = " ".join(context.args)
-    if not msg: 
-        await update.message.reply_text("Usage: /broadcast [Message]")
-        return
-    
-    users = get_all_users_details()
-    ids = [row[0] for row in users]
-    count = 0
-    formatted = f"{LANG['broadcast_header']}\n─────────────────────────────\n{msg}"
-    
-    status = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=f"⏳ Sending to {len(ids)} users...")
-    for uid in ids:
-        try:
-            await context.bot.send_message(chat_id=uid, text=formatted, parse_mode=ParseMode.HTML)
-            count += 1
-        except: pass
-    await context.bot.edit_message_text(chat_id=ADMIN_GROUP_ID, message_id=status.message_id, text=f"✅ Successfully sent to {count} users.")
 
 # --------------------------------------------------------------------------------
 # 🚀 MAIN APPLICATION
@@ -527,33 +531,29 @@ def main() -> None:
     init_db()
     application = Application.builder().token(BOT_TOKEN).build()
 
-    # Admin Commands
     application.add_handler(CommandHandler("broadcast", broadcast_command))
     application.add_handler(CommandHandler("report", report_command))
+    application.add_handler(CommandHandler("reportall", report_all_command))
     application.add_handler(CommandHandler("iduser", list_users_command))
     application.add_handler(CommandHandler("help", admin_help_command))
     
-    # Matches /DI-001 or /DI_001
     application.add_handler(MessageHandler(filters.Regex(r'^/DI[-_]\d+'), history_lookup_handler))
 
-    # User Interactions
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("clear", start))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    # Messages
+    # MODIFIED: Added filters.VIDEO to the filter list
     application.add_handler(MessageHandler(
-        filters.ChatType.PRIVATE & ~filters.COMMAND & (filters.TEXT | filters.PHOTO | filters.Document.ALL | filters.VOICE),
+        filters.ChatType.PRIVATE & ~filters.COMMAND & (filters.TEXT | filters.PHOTO | filters.Document.ALL | filters.VIDEO | filters.VOICE),
         handle_user_message
     ))
 
-    # Admin Replies
     application.add_handler(MessageHandler(filters.Chat(chat_id=ADMIN_GROUP_ID) & filters.REPLY, handle_admin_reply))
 
-    # REGISTER GLOBAL ERROR HANDLER
     application.add_error_handler(error_handler)
 
-    print("🚀 Enterprise Infinity Bot v5 is ONLINE...")
+    print("🚀 Enterprise Infinity Bot v9 (File+Video Support) is ONLINE...")
     application.run_polling()
 
 if __name__ == "__main__":
