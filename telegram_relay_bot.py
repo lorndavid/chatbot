@@ -19,7 +19,7 @@ from telegram.ext import (
 # --------------------------------------------------------------------------------
 # ⚙️ SYSTEM CONFIGURATION (ENTERPRISE SETTINGS)
 # --------------------------------------------------------------------------------
-BOT_TOKEN = "8420582565:AAHM4qR-nN6iheHTO20TnEYFfJqngb5mVco"
+BOT_TOKEN = "8420582565:AAFnas6tEcRlgyc-rybb6qcF9BEjeF-3T0k"
 ADMIN_GROUP_ID = -1003238857423 
 
 # ⏰ Business Hours (24h format)
