@@ -19,7 +19,8 @@ from telegram.ext import (
 # --------------------------------------------------------------------------------
 # ⚙️ SYSTEM CONFIGURATION (ENTERPRISE SETTINGS)
 # --------------------------------------------------------------------------------
-BOT_TOKEN = "8420582565:AAFnas6tEcRlgyc-rybb6qcF9BEjeF-3T0k"
+# REPLACE WITH YOUR NEW TOKEN IF YOU REVOKED THE OLD ONE
+BOT_TOKEN = "8420582565:AAHM4qR-nN6iheHTO20TnEYFfJqngb5mVco"
 ADMIN_GROUP_ID = -1003238857423 
 
 # ⏰ Business Hours (24h format)
@@ -136,11 +137,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def init_db():
-    """Initializes the SQLite database with advanced schema."""
     conn = sqlite3.connect("relay_bot.db")
     c = conn.cursor()
     
-    # 1. Message Table (Stores history)
+    # 1. Message Table
     c.execute('''
         CREATE TABLE IF NOT EXISTS message_map (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,7 +156,7 @@ def init_db():
         )
     ''')
     
-    # 2. User Directory (Stores Persistent ID like DI-001)
+    # 2. User Directory
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -167,13 +167,12 @@ def init_db():
         )
     ''')
     
-    # --- OPTIMIZATION FOR 1000+ USERS: INDEXES ---
-    # These lines make searching instantly fast even with huge data
+    # Indexes for 1000+ Users Performance
     c.execute("CREATE INDEX IF NOT EXISTS idx_users_display_id ON users(display_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_msg_display_id ON message_map(display_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_msg_status ON message_map(status)")
     
-    # Migrations (Auto-fix columns if missing)
+    # Migrations
     try: c.execute("ALTER TABLE users ADD COLUMN display_id TEXT")
     except: pass
     try: c.execute("ALTER TABLE message_map ADD COLUMN display_id TEXT")
@@ -261,18 +260,27 @@ def is_business_hours():
     return WORK_START <= now <= WORK_END
 
 # --------------------------------------------------------------------------------
+# 🛡️ ERROR HANDLER (PREVENTS CRASHES)
+# --------------------------------------------------------------------------------
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and handle it gracefully instead of crashing."""
+    logger.error(msg="Exception while handling an update:", exc_info=context.error)
+    # Optional: Send a message to admin if needed, but keeping it silent for logs is safer for 24/7 uptime.
+
+# --------------------------------------------------------------------------------
 # 👑 ADMIN COMMANDS CENTER
 # --------------------------------------------------------------------------------
 async def admin_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
-    # Uses the new Khmer text
     await update.message.reply_html(LANG["admin_help_text"])
 
 async def list_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
     users = get_all_users_details()
+    
     if not users:
-        await update.message.reply_text("📭 No users yet.")
+        # SAFE SEND: Uses context.bot.send_message instead of reply_text to avoid crashes
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="📭 No users yet.")
         return
 
     msg = f"{LANG['brand_header']}\n{LANG['userlist_header']}\n─────────────────────────────\n"
@@ -280,7 +288,8 @@ async def list_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         u_display = f"@{uname}" if uname else "N/A"
         msg += f"🆔 <b>{did}</b> | 👤 {fname}\n🔗 {u_display} | ID: <code>{uid}</code>\n\n"
     if len(users) > 30: msg += f"<i>(+ {len(users)-30} more users)</i>"
-    await update.message.reply_html(msg)
+    
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=msg, parse_mode=ParseMode.HTML)
 
 async def history_lookup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
@@ -289,7 +298,7 @@ async def history_lookup_handler(update: Update, context: ContextTypes.DEFAULT_T
         display_id = command.replace('_', '-').upper()
         user_info = get_user_id_by_display_id(display_id)
         if not user_info:
-            await update.message.reply_text(f"❌ User ID {display_id} not found.")
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=f"❌ User ID {display_id} not found.")
             return
 
         history = get_user_history(display_id)
@@ -315,7 +324,7 @@ async def history_lookup_handler(update: Update, context: ContextTypes.DEFAULT_T
                 msg += "──────────────────\n"
             if len(history) > 15:
                 msg += f"\n<i>...and {len(history)-15} older messages.</i>"
-        await update.message.reply_html(msg)
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=msg, parse_mode=ParseMode.HTML)
     except Exception as e:
         logger.error(f"Lookup error: {e}")
 
@@ -326,14 +335,12 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if args and args[0].lower() in ['all', 'full', 'csv']:
         conn = sqlite3.connect("relay_bot.db")
         c = conn.cursor()
-        # Updated query to include answer_text
         c.execute("SELECT display_id, user_name, question_text, status, created_at, answer_text, admin_responder FROM message_map ORDER BY created_at DESC")
         data = c.fetchall()
         conn.close()
 
         output = io.StringIO()
         writer = csv.writer(output)
-        # Added 'Admin Response' and 'Admin Name' columns
         writer.writerow(['User Ref ID', 'Name', 'Question', 'Status', 'Date', 'Admin Response', 'Admin Name'])
         writer.writerows(data)
         
@@ -342,7 +349,6 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await context.bot.send_document(chat_id=ADMIN_GROUP_ID, document=bio, caption="📊 <b>Full Export (With Responses)</b>", parse_mode=ParseMode.HTML)
         return
 
-    # Dashboard
     conn = sqlite3.connect("relay_bot.db")
     c = conn.cursor()
     c.execute("SELECT COUNT(*), SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) FROM message_map")
@@ -366,7 +372,7 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             msg += f"• <code>{t[0]}</code> | {t[1]}: {q}\n"
     else:
         msg += "✨ <i>No pending tickets.</i>"
-    await update.message.reply_html(msg)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=msg, parse_mode=ParseMode.HTML)
 
 # --------------------------------------------------------------------------------
 # 👤 USER INTERFACE & MENUS
@@ -452,7 +458,7 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             await update.message.reply_html(receipt_msg)
     except Exception as e:
         logger.error(f"Relay Error: {e}")
-        await update.message.reply_text("⚠️ Connection error. Please try again.")
+        # Silent fail or simple message to avoid loops
 
 # --------------------------------------------------------------------------------
 # 👨‍💼 REPLY HANDLER (ADMIN -> USER)
@@ -481,19 +487,18 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 caption = f"{header}{update.message.caption or ''}{footer}"
                 await context.bot.send_photo(chat_id=user_id, photo=update.message.photo[-1].file_id, caption=caption, parse_mode=ParseMode.HTML)
             elif update.message.voice:
-                # Voice caption length is limited, so we send footer as separate text if needed, or just append slightly
                 caption = f"{header} (Voice Message){footer}"
                 await context.bot.send_voice(chat_id=user_id, voice=update.message.voice.file_id, caption=caption, parse_mode=ParseMode.HTML)
 
             # Update DB (Mark solved)
             update_message_answer(replied_msg_id, answer_content, admin_name)
-            await update.message.reply_text(f"✅ <b>Sent to {user_name} ({display_id})</b>", parse_mode=ParseMode.HTML)
+            await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=f"✅ <b>Sent to {user_name} ({display_id})</b>", parse_mode=ParseMode.HTML)
             
         except Exception as e:
-            await update.message.reply_text(f"❌ Failed: {e}")
+            await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=f"❌ Failed to send: {e}")
     else:
         if not update.message.text.startswith("/"):
-            await update.message.reply_text("⚠️ Ticket context lost (Old message).")
+            await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text="⚠️ Ticket context lost (Old message).")
 
 async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
@@ -507,13 +512,13 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     count = 0
     formatted = f"{LANG['broadcast_header']}\n─────────────────────────────\n{msg}"
     
-    status = await update.message.reply_text(f"⏳ Sending to {len(ids)} users...")
+    status = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=f"⏳ Sending to {len(ids)} users...")
     for uid in ids:
         try:
             await context.bot.send_message(chat_id=uid, text=formatted, parse_mode=ParseMode.HTML)
             count += 1
         except: pass
-    await status.edit_text(f"✅ Successfully sent to {count} users.")
+    await context.bot.edit_message_text(chat_id=ADMIN_GROUP_ID, message_id=status.message_id, text=f"✅ Successfully sent to {count} users.")
 
 # --------------------------------------------------------------------------------
 # 🚀 MAIN APPLICATION
@@ -545,7 +550,10 @@ def main() -> None:
     # Admin Replies
     application.add_handler(MessageHandler(filters.Chat(chat_id=ADMIN_GROUP_ID) & filters.REPLY, handle_admin_reply))
 
-    print("🚀 Enterprise Infinity Bot v4 is ONLINE...")
+    # REGISTER GLOBAL ERROR HANDLER
+    application.add_error_handler(error_handler)
+
+    print("🚀 Enterprise Infinity Bot v5 is ONLINE...")
     application.run_polling()
 
 if __name__ == "__main__":
