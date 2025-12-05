@@ -3,6 +3,9 @@ import sqlite3
 import csv
 import io
 import re
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, time, date
 from typing import Optional
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReactionTypeEmoji
@@ -20,8 +23,25 @@ from telegram.ext import (
 # ⚙️ SYSTEM CONFIGURATION (ENTERPRISE SETTINGS)
 # --------------------------------------------------------------------------------
 # REPLACE WITH YOUR NEW TOKEN IF YOU REVOKED THE OLD ONE
-BOT_TOKEN = "8420582565:AAFnas6tEcRlgyc-rybb6qcF9BEjeF-3T0k"
+BOT_TOKEN = os.environ["BOT_TOKEN"]
 ADMIN_GROUP_ID = -1003238857423 
+
+# --------------------------------------------------------------------------------
+# 🌐 FAKE WEB SERVER (FOR RENDER HOSTING)
+# --------------------------------------------------------------------------------
+# This class tricks Render into thinking the bot is a website so it doesn't kill it.
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive and running!")
+
+def start_web_server():
+    # Render assigns a port automatically via the PORT environment variable
+    port = int(os.environ.get('PORT', 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    print(f"🌍 Fake Web Server started on port {port}")
+    server.serve_forever()
 
 # --------------------------------------------------------------------------------
 # 🇰🇭 PROFESSIONAL LANGUAGE PACK (KHMER ENTERPRISE)
@@ -30,11 +50,11 @@ LANG = {
     # --- HEADERS ---
     "brand_header": "🏢 <b>ប្រព័ន្ធជំនួយនិស្សិតហាត់ការគ្រប់ជំនាន់</b>",
     "reply_header": "👨‍💼 <b>ចម្លើយពីក្រុមការងារ IT_Support</b>",
-    "reply_footer": "\n\n🙏 អរគុណ <b>{name}</b> ដែលបានប្រើប្រាស់ Chat_Bot របស់យើង! បើមានសំណួរឬបញ្ហាផ្សេងទៀតសូមកុំស្ទាក់ស្ទើរនៅក្នុងការទាក់ទងមកយើងវិញ។",
-    "broadcast_header": "📢 <b>សេចក្តីជូនដំណឹងផ្លូវការ </b>",
-    "report_header": "📊 <b>របាយការណ៍សង្ខេប </b>",
-    "userlist_header": "👥 <b>បញ្ជីអ្នកប្រើប្រាស់ </b>",
-    "history_header": "📜 <b>ប្រវត្តិការសន្ទនា </b>",
+    "reply_footer": "\n\n🙏 អរគុណ <b>{name}</b> ដែលបានប្រើប្រាស់ Chat_Bot របស់យើង! បើមានសំណួរឬបញ្ហាផ្សេងទៀត សូមកុំស្ទាក់ស្ទើរនៅក្នុងការទាក់ទងមកយើងវិញ។",
+    "broadcast_header": "📢 <b>សេចក្តីជូនដំណឹងផ្លូវការ</b>",
+    "report_header": "📊 <b>របាយការណ៍សង្ខេប/b>",
+    "userlist_header": "👥 <b>បញ្ជីអ្នកប្រើប្រាស់</b>",
+    "history_header": "📜 <b>ប្រវត្តិការសន្ទនា</b>",
     
     # --- ADMIN MENU (KHMER) ---
     "admin_help_text": (
@@ -65,7 +85,7 @@ LANG = {
         "💬 <b>ស្រាយចម្ងាល់ផ្សេងៗ IT_Support</b>\n"
         "───────────────\n"
         "📝 សូមសរសេររៀបរាប់ពីបញ្ហា ឬសំណួររបស់អ្នកនៅទីនេះ។\n"
-        "📎 <i>(ប្រព័ន្ធទទួល: អក្សរ, រូបភាព,​ វីឌីអូ, ឯកសារ PDF/Word, និង សំឡេង)</i>"
+        "📎 <i>(ប្រព័ន្ធទទួល: អក្សរ, រូបភាព, វីឌីអូ, ឯកសារ PDF/Word, និង សំឡេង)</i>"
     ),
     "ticket_queued": (
         "⏳ ស្ថានភាព: <b>កំពុងបញ្ជូនទៅកាន់ក្រុមការងារ...</b>\n"
@@ -427,7 +447,7 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     sent_msg = None
     try:
         if update.message.text:
-            admin_text += f"💬 <b>សំណួរ: </b>{update.message.text}"
+            admin_text += f"💬 <b>សំណួរ:</b>{update.message.text}"
             sent_msg = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=admin_text, parse_mode=ParseMode.HTML)
         
         # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR USER ---
@@ -525,6 +545,9 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # 🚀 MAIN APPLICATION
 # --------------------------------------------------------------------------------
 def main() -> None:
+    # START THE FAKE WEB SERVER FOR RENDER
+    threading.Thread(target=start_web_server, daemon=True).start()
+
     init_db()
     application = Application.builder().token(BOT_TOKEN).build()
 
@@ -550,7 +573,7 @@ def main() -> None:
 
     application.add_error_handler(error_handler)
 
-    print("🚀 Enterprise Infinity Bot v9 (File+Video Support) is ONLINE...")
+    print("🚀 Enterprise Infinity Bot v10 (Crash Proof + Web Server) is ONLINE...")
     application.run_polling()
 
 if __name__ == "__main__":
