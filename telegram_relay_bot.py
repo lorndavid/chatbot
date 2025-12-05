@@ -440,7 +440,7 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     # MODIFIED: Clean modern header format as requested
     admin_text = (
-        f"🔗 <b>គណនី:</b> @{user.username or 'NoUser'}\n"
+        f"👤 <b>ឈ្មោះ:</b> {user.full_name}\n"
         f"───────────────\n"
     )
 
