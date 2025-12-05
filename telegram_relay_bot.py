@@ -421,16 +421,14 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     # MODIFIED: Clean modern header format as requested
     admin_text = (
-        f"📨 <b>សារថ្មីពីនិស្សិតហាត់ការគ្រប់ជំនាន់  {display_id}</b>\n"
+        f"🔗 <b>គណនី:</b> @{user.username or 'NoUser'}\n"
         f"───────────────\n"
-        f"👤 <b>ឈ្មោះ:</b> {user.full_name}\n"
-        f"🔗 <b>គណនី:</b> @{user.username or 'NoUser'}\n\n"
     )
 
     sent_msg = None
     try:
         if update.message.text:
-            admin_text += f"💬 <b>សំណួរ:</b>\n{update.message.text}"
+            admin_text += f"💬 <b>សំណួរ: </b>{update.message.text}"
             sent_msg = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=admin_text, parse_mode=ParseMode.HTML)
         
         # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR USER ---
