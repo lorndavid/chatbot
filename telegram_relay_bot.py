@@ -49,10 +49,10 @@ def start_web_server():
 LANG = {
     # --- HEADERS ---
     "brand_header": "🏢 <b>ប្រព័ន្ធជំនួយនិស្សិតហាត់ការគ្រប់ជំនាន់</b>",
-    "reply_header": "👨‍💼 <b>ចម្លើយពីក្រុមការងារ IT_Support</b>",
+    "reply_header": "👨‍💼 <b>ដំណោះស្រាយពីក្រុមការងារ IT_Support</b>",
     "reply_footer": "\n\n🙏 អរគុណ <b>{name}</b> ដែលបានប្រើប្រាស់ Chat_Bot របស់យើង! បើមានសំណើរឬបញ្ហាផ្សេងទៀត សូមទាក់ទងមកក្រុមការងារយើងវិញ។",
     "broadcast_header": "📢 <b>សេចក្តីជូនដំណឹងផ្លូវការ</b>",
-    "report_header": "📊 <b>របាយការណ៍សង្ខេប/b>",
+    "report_header": "📊 <b>របាយការណ៍សង្ខេប</b>",
     "userlist_header": "👥 <b>បញ្ជីអ្នកប្រើប្រាស់</b>",
     "history_header": "📜 <b>ប្រវត្តិការសន្ទនា</b>",
     
@@ -63,7 +63,7 @@ LANG = {
         "• <code>/iduser</code> : មើលបញ្ជីអ្នកប្រើប្រាស់ទាំងអស់ (List Users)\n"
         "• <code>/DI-xxx</code> : មើលប្រវត្តិសន្ទនារបស់អតិថិជន (View History)\n"
         "• <code>/report</code> : មើលរបាយការណ៍សង្ខេបប្រចាំថ្ងៃ (Daily Stats)\n"
-        "• <code>/reportall</code> : ទាញយកឯកសារ Excel ពេញលេញ (Download CSV)\n"
+        "• <code>/report all</code> : ទាញយកឯកសារ Excel ពេញលេញ (Download CSV)\n"
         "• <code>/broadcast [msg]</code> : ផ្ញើសារជូនដំណឹងទៅកាន់អ្នកទាំងអស់គ្នា\n"
         "• <code>/help</code> : បង្ហាញបញ្ជីនេះម្តងទៀត"
     ),
@@ -105,7 +105,7 @@ LANG = {
         "🔴 <b>ម៉ោងចេញ:</b> 05:30 ល្ងាច\n\n"
         "📍 <b>ទីតាំង:</b> ភូមិត្រពាំងស្លា ឃំុព្រះនិពាន្ធ ស្រុកកងពិសី ខេត្តកំពង់ស្ពឺ"
     ),
-"info_discipline": (
+    "info_discipline": (
         "📜 <b>វិន័យ និងគោលការណ៍ការងារក្នុង DI</b>\n"
         "───────────────\n"
         "ដើម្បីរក្សាបាននូវស្តង់ដារការងារខ្ពស់ និងវប្បធម៌ល្អប្រសើរ យើងសូមណែនាំនូវចំណុចសំខាន់ៗ៖\n\n"
@@ -317,6 +317,12 @@ async def history_lookup_handler(update: Update, context: ContextTypes.DEFAULT_T
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
     
+    # --- NEW: Check if user typed "/report all" ---
+    if context.args and context.args[0].lower() in ['all', 'full', 'csv']:
+        await report_all_command(update, context)
+        return
+    # -----------------------------------------------
+
     conn = sqlite3.connect("relay_bot.db")
     c = conn.cursor()
     c.execute("SELECT COUNT(*), SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) FROM message_map")
@@ -446,7 +452,7 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     sent_msg = None
     try:
         if update.message.text:
-            admin_text += f"💬 <b>សំណួរ:</b>{update.message.text}"
+            admin_text += f"💬 <b>សំណួរ: </b>{update.message.text} "
             sent_msg = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=admin_text, parse_mode=ParseMode.HTML)
         
         # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR USER ---
@@ -572,7 +578,7 @@ def main() -> None:
 
     application.add_error_handler(error_handler)
 
-    print("🚀 Enterprise Infinity Bot v10 (Crash Proof + Web Server) is ONLINE...")
+    print("🚀 Enterprise Infinity Bot v12 (Report Fix) is ONLINE...")
     application.run_polling()
 
 if __name__ == "__main__":
