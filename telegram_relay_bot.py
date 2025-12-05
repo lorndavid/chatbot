@@ -82,7 +82,7 @@ LANG = {
     "contact_intro": (
         "💬 <b>ដោះស្រាយបញ្ហាផ្សេងៗតាម Chat_Bot</b>\n"
         "───────────────\n"
-        "📝 តើអ្នកមានបញ្ហាអ្វី​? តើមានអ្វី៎៎៎ឳ្យជួយដោះស្រាយ?\n"
+        "📝 តើអ្នកមានបញ្ហាអ្វី​? តើអ្នកមានអ្វីឳ្យជួយដោះស្រាយ?\n"
     ),
     "session_cleared": "♻️ <b>ការសន្ទនាត្រូវបានបិទបញ្ចប់។</b>",
 }
@@ -399,16 +399,14 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     # MODIFIED: Clean modern header format
     admin_text = (
-        f"📨 <b>សារថ្មីពីនិស្សិតហាត់ការគ្រប់ជំនាន់  {display_id}</b>\n"
-        f"───────────────\n"
         f"👤 <b>ឈ្មោះ:</b> {user.full_name}\n"
-        f"🔗 <b>គណនី:</b> @{user.username or 'NoUser'}\n\n"
+        f"───────────────\n"
     )
 
     sent_msg = None
     try:
         if update.message.text:
-            admin_text += f"💬 <b>សំណួរ:</b>\n{update.message.text}"
+            admin_text += f"💬 <b>សំណួរ:</b>​{update.message.text} "
             sent_msg = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=admin_text, parse_mode=ParseMode.HTML)
         
         # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR USER ---
