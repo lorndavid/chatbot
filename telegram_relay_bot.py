@@ -74,57 +74,17 @@ LANG = {
         "សូមស្វាគមន៍មកកាន់ប្រព័ន្ធដោះស្រាយបញ្ហា។\n\n"
         "🆔 លេខសម្គាល់របស់អ្នក: <code>{display_id}</code>\n\n"
         "យើងខ្ញុំត្រៀមខ្លួនជាស្រេចដើម្បីជួយដោះស្រាយនិងសម្រួលបញ្ហារបស់លោកអ្នក។\n"
-        "សូមជ្រើសរើសប្រតិបត្តិការខាងក្រោម៖"
+        "សូមចុចប៊ូតុងខាងក្រោម👇"
     ),
-    "menu_btn_support": "💬 ពិភ្សារជាមួយក្រុមការងារ IT_Support",
-    "menu_btn_info": "🏢 ម៉ោងធ្វើការ",
-    "menu_btn_discipline": "📜 វិន័យក្នុង DI",
+    "menu_btn_support": "💬 សុំជំនួយពីក្រុមការងារ IT_Support",
     
     # --- MESSAGES ---
     "contact_intro": (
         "💬 <b>ដោះស្រាយបញ្ហាផ្សេងៗតាម Chat_Bot</b>\n"
         "───────────────\n"
-        "📝 សូមសរសេររៀបរាប់ពីបញ្ហា ឬសំណួររបស់អ្នកនៅទីនេះ។\n"
-        "📎 <i>(ប្រព័ន្ធទទួល: អក្សរ, រូបភាព, វីឌីអូ, ឯកសារ PDF/Word, និង សំឡេង)</i>"
-    ),
-    "ticket_queued": (
-        "<i>យើងខ្ញុំនឹងឆ្លើយតបជូនលោកអ្នកក្នុងពេលបន្តិចទៀតនេះសូមធ្វើការរងចាំ!។</i>"
+        "📝 តើអ្នកមានបញ្ហាអ្វី​? តើមានអ្វី៎៎៎ឳ្យជួយដោះស្រាយ?\n"
     ),
     "session_cleared": "♻️ <b>ការសន្ទនាត្រូវបានបិទបញ្ចប់។</b>",
-    
-    # --- INFO SECTIONS ---
-    "info_company": (
-        "🏢 <b>ព័ត៌មានក្រុមហ៊ុន (Digital Industry)</b>\n"
-        "───────────────\n"
-        "យើងប្តេជ្ញាផ្តល់ជូននូវបរិយាកាសការងារប្រកបដោយវិជ្ជាជីវៈ និងប្រសិទ្ធភាពខ្ពស់។\n\n"
-        "⏰ <b>កាលវិភាគការងារ:</b>\n"
-        "🟢 <b>ម៉ោងចូល:</b> 07:30 ព្រឹក\n"
-        "☕ <b>សម្រាកពេលព្រឹក:</b> 09:30 - 09:45 ព្រឹក\n"
-        "🍽️ <b>សម្រាកអាហារថ្ងៃត្រង់:</b> 11:30 - 12:30 ថ្ងៃត្រង់\n"
-        "☕ <b>សម្រាកពេលរសៀល:</b> 02:30 - 02:45 រសៀល\n"
-        "🔴 <b>ម៉ោងចេញ:</b> 05:30 ល្ងាច\n\n"
-        "📍 <b>ទីតាំង:</b> ភូមិត្រពាំងស្លា ឃំុព្រះនិពាន្ធ ស្រុកកងពិសី ខេត្តកំពង់ស្ពឺ"
-    ),
-    "info_discipline": (
-        "📜 <b>វិន័យ និងគោលការណ៍ការងារក្នុង DI</b>\n"
-        "───────────────\n"
-        "ដើម្បីរក្សាបាននូវស្តង់ដារការងារខ្ពស់ និងវប្បធម៌ល្អប្រសើរ យើងសូមណែនាំនូវចំណុចសំខាន់ៗ៖\n\n"
-        "1️⃣ <b>ឥរិយាបថ និងសីលធម៌ (Attitude):</b>\n"
-        "• មានសីលធម៌ខ្ពស់ចំពោះអ្នកដឹកនាំ (គណៈគ្រប់គ្រង)\n"
-        "• ត្រូវមានភាពស្មោះត្រង់ (Honesty) និងការគោរពគ្នាទៅវិញទៅមក។\n"
-        "• រក្សាទំនាក់ទំនងល្អជាមួយក្រុមការងារ។\n"
-        "• មានស្មារតីសហការជាក្រុម (Teamwork) និងជួយគ្នាទៅវិញទៅមក។\n\n"
-        "2️⃣ <b>ការបំពេញការងារ (Work Ethics):</b>\n"
-        "• ត្រូវមកធ្វើការឱ្យទាន់ពេលវេលាដែលបានកំណត់ (07:30 ព្រឹក)។\n"
-        "• ទទួលខុសត្រូវខ្ពស់លើភារកិច្ចដែលបានប្រគល់ជូន។\n"
-        "• ព្យាយាមអភិវឌ្ឍសមត្ថភាពខ្លួនឯងជាប្រចាំ។\n\n"
-        "3️⃣ <b>វិន័យទូទៅ (General Discipline):</b>\n"
-        "• គោរពតាមបទបញ្ជាផ្ទៃក្នុងរបស់ក្រុមហ៊ុនយ៉ាងម៉ឺងម៉ាត់។\n"
-        "• ចូលរួមថែរក្សាសណ្តាប់ធ្នាប់ និងអនាម័យកន្លែងធ្វើការ។\n"
-        "• ប្រើប្រាស់ពេលសម្រាក (Break Time) ឱ្យបានត្រឹមត្រូវ។\n"
-        "• ហាមលេងហ្គេម (Game) ឬប្រើប្រាស់ទូរស័ព្ទក្នុងគោលបំណងកម្សាន្តក្នុងម៉ោងធ្វើការ។\n\n"
-        "✨ <i>ភាពជោគជ័យរបស់អ្នក គឺជាជោគជ័យរបស់យើងទាំងអស់គ្នា!</i>"
-    ),
 }
 
 # --------------------------------------------------------------------------------
@@ -317,7 +277,7 @@ async def history_lookup_handler(update: Update, context: ContextTypes.DEFAULT_T
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ADMIN_GROUP_ID: return
     
-    # --- NEW: Check if user typed "/report all" ---
+    # --- Check if user typed "/report all" ---
     if context.args and context.args[0].lower() in ['all', 'full', 'csv']:
         await report_all_command(update, context)
         return
@@ -402,10 +362,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     display_id = get_or_create_user(user)
 
-    # REMOVED PROFILE BUTTON
+    # REMOVED EXTRA BUTTONS
     keyboard = [
-        [InlineKeyboardButton(LANG["menu_btn_support"], callback_data="btn_support")],
-        [InlineKeyboardButton(LANG["menu_btn_info"], callback_data="btn_info"), InlineKeyboardButton(LANG["menu_btn_discipline"], callback_data="btn_discipline")]
+        [InlineKeyboardButton(LANG["menu_btn_support"], callback_data="btn_support")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -419,15 +378,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     query = update.callback_query
     await query.answer()
     data = query.data
-    user = query.from_user
-    display_id = get_or_create_user(user)
+    display_id = get_or_create_user(query.from_user)
 
     if data == "btn_support":
         await query.message.reply_html(LANG["contact_intro"])
-    elif data == "btn_info":
-        await query.message.reply_html(LANG["info_company"])
-    elif data == "btn_discipline":
-        await query.message.reply_html(LANG["info_discipline"])
 
 # --------------------------------------------------------------------------------
 # 📨 MESSAGE HANDLER (USER -> ADMIN)
@@ -443,16 +397,18 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     display_id = get_or_create_user(user)
     question_content = update.message.text or "[Media/File]"
     
-    # MODIFIED: Clean modern header format as requested
+    # MODIFIED: Clean modern header format
     admin_text = (
-        f"👤 <b>ឈ្មោះ:</b> {user.full_name}\n"
+        f"📨 <b>សារថ្មីពីនិស្សិតហាត់ការគ្រប់ជំនាន់  {display_id}</b>\n"
         f"───────────────\n"
+        f"👤 <b>ឈ្មោះ:</b> {user.full_name}\n"
+        f"🔗 <b>គណនី:</b> @{user.username or 'NoUser'}\n\n"
     )
 
     sent_msg = None
     try:
         if update.message.text:
-            admin_text += f"💬 <b>សំណួរ: </b>{update.message.text} "
+            admin_text += f"💬 <b>សំណួរ:</b>\n{update.message.text}"
             sent_msg = await context.bot.send_message(chat_id=ADMIN_GROUP_ID, text=admin_text, parse_mode=ParseMode.HTML)
         
         # --- FIXED: ADDED FILE & VIDEO SUPPORT FOR USER ---
@@ -478,7 +434,7 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             except Exception:
                 pass 
             
-            # Send standard receipt (NO OFFLINE FOOTER)
+            # Send standard receipt
             receipt_msg = LANG["ticket_queued"].format(display_id=display_id)
             await update.message.reply_html(receipt_msg)
             
@@ -578,7 +534,7 @@ def main() -> None:
 
     application.add_error_handler(error_handler)
 
-    print("🚀 Enterprise Infinity Bot v12 (Report Fix) is ONLINE...")
+    print("🚀 Enterprise Infinity Bot v13 is ONLINE...")
     application.run_polling()
 
 if __name__ == "__main__":
