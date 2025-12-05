@@ -24,7 +24,7 @@ from telegram.ext import (
 # --------------------------------------------------------------------------------
 # REPLACE WITH YOUR NEW TOKEN IF YOU REVOKED THE OLD ONE
 BOT_TOKEN = "8420582565:AAFnas6tEcRlgyc-rybb6qcF9BEjeF-3T0k"
-ADMIN_GROUP_ID = -1003238857423 
+ADMIN_GROUP_ID = -1003325498790 
 
 # --------------------------------------------------------------------------------
 # 🌐 FAKE WEB SERVER (FOR RENDER HOSTING)
